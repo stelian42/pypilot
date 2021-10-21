@@ -8,7 +8,7 @@
 
 // could this work with attiny1614?
 
-#include <RCSwitch.h>
+#include "RCSwitch.h"
 
 RCSwitch rf = RCSwitch();
 
