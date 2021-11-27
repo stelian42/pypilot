@@ -388,9 +388,9 @@ void send_code(uint8_t source, uint32_t value)
 
 void read_analog() {
     static uint8_t channel;
-    const uint8_t channels[] = {_BV(MUX1) | _BV(MUX2),              // 5v through divider
-                                _BV(MUX0) | _BV(MUX1) | _BV(MUX2),  // ambient light sensor
-                                _BV(MUX1) | _BV(MUX2) | _BV(MUX3)}; // reference voltage
+    const uint8_t channels[] = {_BV(MUX1) | _BV(MUX2),              // ADC6 = ambient light sensor
+                                _BV(MUX0) | _BV(MUX1) | _BV(MUX2),  // ADC7 = 5V through divider
+                                _BV(MUX1) | _BV(MUX2) | _BV(MUX3)}; // 1.1V reference voltage
     if(ADCSRA & _BV(ADSC))
         return; // not ready yet
 
@@ -406,10 +406,10 @@ void read_analog() {
     if(++channel == sizeof channels)
         channel = 0;
 
-    ADMUX = _BV(REFS0) | channels[channel]; // select channel at 5 volts
+    ADMUX = _BV(REFS0) | channels[channel]; // select next channel
     ADCSRA |= _BV(ADSC);
 
-    uint16_t ambient = adc_avg[1];
+    uint16_t ambient = adc_avg[0];
 
     //Configure TIMER1 to drive backlight variable pwm
     static uint8_t last_backlight = 0;
@@ -459,7 +459,7 @@ void read_analog() {
 
     // calculate input power voltage through input divider
     // Vcc = 2*power/4/1023*vin
-    uint16_t vcc = adc_avg[0];
+    uint16_t vcc = adc_avg[1];
 //      uint16_t vcc = 6200 * 2;
     vcc = ((uint32_t)vin*vcc)>>13;
     uint8_t d[PACKET_LEN];
