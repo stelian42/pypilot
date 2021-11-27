@@ -22,6 +22,8 @@
 
 // do not include IR support
 #undef IR_SUPPORT
+// do not include EXT key support
+#undef EXT_SUPPORT
 
 #define DATA_PIN 2
 #define DIR_PIN 4
@@ -538,6 +540,7 @@ void loop() {
         rf.resetAvailable();
     }
 
+#ifdef EXT_SUPPORT
     // parse incoming data
     uint32_t dt = t - codes[GP].ltime;
     if(dt > 40) { // do not send faster than 40 ms
@@ -547,4 +550,5 @@ void loop() {
         if(!digitalRead(7))
             send_code(GP, 7);
     }
+#endif
 }
