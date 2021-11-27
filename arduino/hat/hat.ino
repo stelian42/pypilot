@@ -20,6 +20,9 @@
 
 #include <RCSwitch.h>
 
+// do not include IR support
+#undef IR_SUPPORT
+
 #define DATA_PIN 2
 #define DIR_PIN 4
 #define LED_PIN 8
@@ -32,6 +35,7 @@ enum {RF=0x01, IR=0x02, GP=0x03, VOLTAGE=0x04, SET_BACKLIGHT=0x16, SET_BUZZER=0x
 
 RCSwitch rf = RCSwitch();
 
+#ifdef IR_SUPPORT
 #include <IRLibRecvPCI.h> 
 #include <IRLibDecodeBase.h>
 #include <IRLib_P01_NEC.h>    //Lowest numbered protocol 1st
@@ -45,6 +49,7 @@ RCSwitch rf = RCSwitch();
 
 IRdecode myDecoder;   //create decoder
 IRrecvPCI ir(3);//pin number for the receiver
+#endif
 
 uint8_t backlight_value = 64; // determines when backlight turns on
 uint8_t backlight_polarity = 0;
@@ -229,7 +234,9 @@ void setup()
     pinMode(DIR_PIN, INPUT);
 
     rf.enableReceive(0);  // Receiver on interrupt 0 => that is pin #2
+#ifdef IR_SUPPORT
     ir.enableIRIn();
+#endif
 
     for(int i=0; i<6; i++)
         pinMode(A0+i, INPUT_PULLUP);
@@ -512,6 +519,7 @@ void loop() {
     }
     t = millis();
 
+#ifdef IR_SUPPORT
     // read from IR??
     if (ir.getResults()) {
         myDecoder.decode();
@@ -519,6 +527,7 @@ void loop() {
             send_code(IR, (myDecoder.value<<8) | myDecoder.protocolNum);
         ir.enableIRIn();      //Restart receiver
     }
+#endif
     if (rf.available()) {
         uint32_t value = rf.getReceivedValue();
         if(value && rf.getReceivedBitlength() == 24) {
