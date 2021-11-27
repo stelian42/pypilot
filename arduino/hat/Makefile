@@ -1,7 +1,6 @@
-# set the board to uno because nano has incorrect fuses for new bootloader
 ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.16/
-BOARD_TAG = uno
-BOARD_SUB   = atmega328p
+BOARD_TAG = pro
+BOARD_SUB = 8MHzatmega328
 
 CPPFLAGS = -I.
 ARDUINO_LIBS = IRLib2 IRLibProtocols IRLibRecvPCI
