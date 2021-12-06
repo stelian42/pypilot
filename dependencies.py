@@ -211,7 +211,7 @@ ss('data', 'data files used by various pypilot components',
    [data_dep()])
 
 
-if os.path.basename(os.path.abspath(os.curdir)) != 'pypilot':
+if os.path.basename(os.path.abspath(os.curdir)) != 'pypilot.git':
     print('please run this script from the pypilot directory')
     exit(1)
 
