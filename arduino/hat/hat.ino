@@ -20,14 +20,16 @@
 
 #include <RCSwitch.h>
 
-// do not include IR support
-#undef IR_SUPPORT
-// do not include EXT key support
-#undef EXT_SUPPORT
-
 #define DATA_PIN 2
 #define DIR_PIN 4
 #define LED_PIN 8
+
+// do not include IR support
+#undef USE_IR
+#define USE_RF
+#define USE_UART
+// do not include EXT key support
+#undef USE_EXT
 
 // start byte $ followed by PACKET_LEN bytes, and a parity byte
 #define PACKET_LEN 6
@@ -35,9 +37,11 @@
 // of packet bytes, first byte defines message type 
 enum {RF=0x01, IR=0x02, GP=0x03, VOLTAGE=0x04, SET_BACKLIGHT=0x16, SET_BUZZER=0x17, SET_BAUD=0x18};
 
+#ifdef USE_RF
 RCSwitch rf = RCSwitch();
+#endif
 
-#ifdef IR_SUPPORT
+#ifdef USE_IR
 #include <IRLibRecvPCI.h> 
 #include <IRLibDecodeBase.h>
 #include <IRLib_P01_NEC.h>    //Lowest numbered protocol 1st
@@ -58,6 +62,7 @@ uint8_t backlight_polarity = 0;
 uint8_t backlight_value_ee EEMEM = 64; // determines when backlight turns on
 uint8_t backlight_polarity_ee EEMEM = 0;
 uint8_t serial_baud_ee EEMEM = 0;
+
 
 #define RB_CREATE(NAME, SIZE)                                           \
     uint8_t rb_##NAME[SIZE];                                            \
@@ -90,8 +95,8 @@ uint8_t serial_baud_ee EEMEM = 0;
 #define RB_EMPTY(NAME) (rb_##NAME##_head == rb_##NAME##_tail)
 
 RB_CREATE(serial_out, 124)
+#ifdef USE_UART
 RB_CREATE(serial_in, 124)
-RB_CREATE(data_in, 124)
 
 ISR(USART_RX_vect)
 {
@@ -112,6 +117,9 @@ ISR(USART_UDRE_vect)
     } else
         UCSR0B &= ~_BV(UDRIE0);
 }
+#endif
+
+RB_CREATE(data_in, 124)
 
 ISR (SPI_STC_vect) // SPI interrupt routine
 {
@@ -119,10 +127,12 @@ ISR (SPI_STC_vect) // SPI interrupt routine
     RB_GET(serial_out, SPDR);
     if(c>127)
         RB_PUT(data_in, c)
+#ifdef USE_UART
     else if(c) {
         RB_PUT(serial_in, c);
         UCSR0B |= _BV(UDRIE0);
     }
+#endif
 }
 
 /*
@@ -134,7 +144,7 @@ ISR(WDT_vect)
     asm volatile ("ijmp" ::"z" (0x0000)); // soft reset
 }
 */
-
+#ifdef USE_UART
 void Serial_begin(uint8_t baud)
 {
     UCSR0A = 0;//_BV(U2X0);
@@ -153,6 +163,7 @@ void Serial_begin(uint8_t baud)
     
     UCSR0B = _BV(TXEN0) | _BV(RXEN0) | _BV(RXCIE0);
 }
+#endif
 
 uint32_t buzzer_timeout;
 uint8_t buzzer_mode;
@@ -212,7 +223,9 @@ void setup()
         backlight_polarity = 0;
     uint8_t baud = eeprom_read_byte(&serial_baud_ee);
 
+#ifdef USE_UART
     Serial_begin(baud);
+#endif
     pinMode(0, INPUT_PULLUP);
     pinMode(1, INPUT_PULLUP);
 
@@ -235,8 +248,11 @@ void setup()
     pinMode(3, INPUT);
     pinMode(DIR_PIN, INPUT);
 
+#ifdef USE_RF
     rf.enableReceive(0);  // Receiver on interrupt 0 => that is pin #2
-#ifdef IR_SUPPORT
+#endif
+
+#ifdef USE_IR
     ir.enableIRIn();
 #endif
 
@@ -323,7 +339,9 @@ void read_data()
     case SET_BAUD:
     {
         eeprom_update_byte(&serial_baud_ee, d[0]);
+#ifdef USE_UART
         Serial_begin(d[0]);
+#endif
     } break;
     }
 }
@@ -363,7 +381,7 @@ void send_code(uint8_t source, uint32_t value)
         if(++codes[source].repeat_count > 127)
             codes[source].repeat_count = 1;
     } else {
-        // unfortunately IR has infrequent but soemtimes wrong value codes
+        // unfortunately IR has infrequent but sometimes wrong value codes
         // so sending keyup from previous key if a new down is not used here.
         if(source == IR && codes[source].lvalue && value)
             return;
@@ -521,7 +539,7 @@ void loop() {
     }
     t = millis();
 
-#ifdef IR_SUPPORT
+#ifdef USE_IR
     // read from IR??
     if (ir.getResults()) {
         myDecoder.decode();
@@ -530,6 +548,8 @@ void loop() {
         ir.enableIRIn();      //Restart receiver
     }
 #endif
+
+#ifdef USE_RF
     if (rf.available()) {
         uint32_t value = rf.getReceivedValue();
         if(value && rf.getReceivedBitlength() == 24) {
@@ -539,8 +559,9 @@ void loop() {
         }
         rf.resetAvailable();
     }
+#endif
 
-#ifdef EXT_SUPPORT
+#ifdef USE_EXT
     // parse incoming data
     uint32_t dt = t - codes[GP].ltime;
     if(dt > 40) { // do not send faster than 40 ms
