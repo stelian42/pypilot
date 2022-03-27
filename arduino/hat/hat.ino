@@ -24,12 +24,18 @@
 #define DIR_PIN 4
 #define LED_PIN 8
 
-// do not include IR support
-#undef USE_IR
 #define USE_RF
 #define USE_UART
+
+// enable IR reception only for 328p (it has enough memory)
+#ifdef __AVR_ATmega328P__
+#define USE_IR
+#endif
+
 // do not include EXT key support
 #undef USE_EXT
+// do not include IR support
+#undef USE_IR
 
 // start byte $ followed by PACKET_LEN bytes, and a parity byte
 #define PACKET_LEN 6
