@@ -1,5 +1,5 @@
 import os, sys
-d = '/home/sean/.pypilot/ugfxfonts/'
+d = '/home/stelian/.pypilot/ugfxfonts/'
 files = os.listdir(d)
 
 fonts = {}

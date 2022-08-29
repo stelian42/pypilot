@@ -117,9 +117,9 @@ PWR+             VIN
 #include "crc.h"
 
 //#define VNH2SP30 // defined if this board is used
-//#define DISABLE_TEMP_SENSE    // if no temp sensors avoid errors
+#define DISABLE_TEMP_SENSE    // if no temp sensors avoid errors
 //#define DISABLE_VOLTAGE_SENSE // if no voltage sense
-#define DISABLE_RUDDER_SENSE  // if no rudder sense
+//#define DISABLE_RUDDER_SENSE  // if no rudder sense
 
 
 // run at 4mhz instead of 16mhz to save power

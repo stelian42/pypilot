@@ -55,8 +55,10 @@ def draw(surface, pos, text, size, bw, crop=False):
             src = font[c]
         else:
             src = None
-            while size>1:
-                filename = fontpath + '%03d%03d' % (size, ord(c))
+            first = True
+            nsize = size
+            while nsize>1:
+                filename = fontpath + '%03d%03d' % (nsize, ord(c))
 
                 if micropython:
                     #print('try load', filename)
@@ -74,16 +76,20 @@ def draw(surface, pos, text, size, bw, crop=False):
                 
                 if not micropython:
                     try:
-                        print('create font charater', c, size, src.bypp, surface.bypp)
+                        print('create font charater', c, nsize, src.bypp, surface.bypp)
                     except:
-                        print('create font charater', size, src.bypp, surface.bypp)
+                        print('create font charater', nsize, src.bypp, surface.bypp)
                         print('unable to print unicode character to console')
-                    src = create_character(os.path.abspath(os.path.dirname(__file__)) + "/font.ttf", size, c, surface.bypp, crop, bw)
+                    src = create_character(os.path.abspath(os.path.dirname(__file__)) + "/font.ttf", nsize, c, surface.bypp, crop, bw)
                     if src:
                         print('store grey', filename)
                         src.store_grey(filename.encode('utf-8'))
                     break
-                size -= 1 # try smaller size
+                else:
+                    if first:
+                        print('NOT found: %d %d' % (nsize, ord(c)))
+                    first = False
+                nsize -= 1 # try smaller size
 
         if not src or src.bypp != surface.bypp:
             print('font dont have character', ord(c), size)
