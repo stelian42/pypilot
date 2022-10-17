@@ -1,7 +1,7 @@
 ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.18/
-BOARD_TAG = uno
-#BOARD_TAG = mega32-16
-MCU = atmega32
+#BOARD_TAG = uno
+BOARD_TAG = mega32-16
+#MCU = atmega32
 
 ISP_PROG = avrispmkii
 
