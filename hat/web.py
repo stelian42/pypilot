@@ -18,13 +18,20 @@ socketio = SocketIO(app, async_mode=None)
 web_port = 33333
 
 default_actions = \
-    {'auto':['ir030C1000','ir030C1800','KEY_POWER','gpio17','rf7E1C2950','rf7E0C2950'],
-     'menu':['ir030D1000','ir030D1800','KEY_MUTE','gpio23','rf7D1C2950','rf7D0C2950'],
-     'port1':['ir03201800','ir03201000','KEY_UP','gpio27','rf771C2950','rf770C2950'],
-     'starboard1':['ir03211800','ir03211000','KEY_DOWN','gpio22','rf7B1C2950','rf7B0C2950'],
-     'select':['ir030B1000','ir030B1800','KEY_SELECT','gpio18','rf6F1C2950','rf6F0C2950'],
-     'port10':['ir03111800','ir03111000','KEY_LEFT','gpio6','rf3F1C2950','rf3F0C2950'],
-     'starboard10':['ir03101800','ir03101000','KEY_RIGHT','gpio5','rf5F1C2950','rf5F0C2950']}
+    {'-10_': ['ir03111800','ir03111000','KEY_LEFT'  ,'gpio6' ,'rf3F402C50','rf3F403C50'],
+     '-1_':  ['ir03201800','ir03201000','KEY_UP'    ,'gpio27','rf77082C50','rf77083C50'],
+     '+1_':  ['ir03211800','ir03211000','KEY_DOWN'  ,'gpio22','rf7B042C50','rf7B043C50'],
+     '+10_': ['ir03101800','ir03101000','KEY_RIGHT' ,'gpio5' ,'rf5F202C50','rf5F203C50'],
+     'auto_':['ir030C1000','ir030C1800','KEY_POWER' ,'gpio17','rf7E012C50','rf7E013C50'],
+     'menu_':['ir030D1000','ir030D1800','KEY_MUTE'  ,'gpio23','rf7D022C50','rf7D023C50'],
+     'mode_':['ir030B1000','ir030B1800','KEY_SELECT','gpio18','rf6F102C50','rf6F103C50'],
+
+     '-10': ['rf3F402950', 'rf3F403950'],
+     '-1':  ['rf77082950', 'rf77083950'],
+     '+1':  ['rf7B042950', 'rf7B043950'],
+     '+10': ['rf5F202950', 'rf5F203950'],
+     'standby': ['rf7E012950', 'rf7E013950']
+    }
 
 try:
     from flask_babel import Babel, gettext
@@ -62,6 +69,11 @@ class WebConfig(Namespace):
         i = 0
         actions = config['actions']
         for name in actions:
+            if name.startswith('profile '):
+                continue
+
+            n = name.replace(' ', '_')
+            n = n.replace('+', 'plus')
             if i == 7:
                 acts[ind] += Markup('</tr></table>')
                 ind = 1
@@ -71,15 +83,15 @@ class WebConfig(Namespace):
     
             if col == 0:
                 acts[ind] += Markup('<tr>')
-            acts[ind] += Markup('<td><button id="action_' + name.replace(' ', '') + '">' +
+            acts[ind] += Markup('<td><button id="action_' + n + '">' +
                            name + '</button></td><td><span id="action' +
-                           name + 'keys"></span></td>')
+                           n + 'keys"></span></td>')
             if col == cols-1:
                 acts[ind] += Markup('</tr>')
                 col = 0
             else:
                 col += 1
-            names += Markup('"' + name + '", ')
+            names += Markup('"' + n + '", ')
 
         acts[ind] += Markup('</table>')
 
@@ -138,16 +150,27 @@ class WebConfig(Namespace):
             self.emit_keys()
             return
 
+        if command.startswith('clearcodes'):
+            command = command[10:]
+            if command in actions:
+                actions[command] = []
+            self.emit_keys()
+            return
+
         if not self.last_key:
             return
-        
+
         # remove this key from any actions
         for name, keys in actions.items():
             while self.last_key in keys:
                 keys.remove(self.last_key)
 
         # add the last key to the action
-        actions[command].append(self.last_key)
+        if command != 'none':
+            if not command in actions:
+                actions[command] = []
+            
+            actions[command].append(self.last_key)
         self.emit_keys()
 
     def on_config(self, config):
@@ -161,12 +184,12 @@ class WebConfig(Namespace):
         self.pipe.send({'actions': actions})
 
     def on_connect(self):
-        self.emit_keys()
         if self.profiles:
             socketio.emit('profiles', self.profiles)
+        self.emit_keys()
 
         print('web client connected', request.sid)
-        socketio.emit('status', self.status)
+
 
     def on_disconnect(self):
         print('web client disconnected', request.sid)
@@ -207,6 +230,7 @@ class WebConfig(Namespace):
                     #socketio.emit('status', self.status)
                 if 'profiles' in msg:
                     self.profiles = msg['profiles']
+                    self.emit_keys()
 
 def web_process(pipe, config):
     print('web process', os.getpid())
