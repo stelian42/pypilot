@@ -50,7 +50,6 @@ $(document).ready(function() {
     port = pypilot_web_port;
     var socket = io.connect(location.protocol + '//' + document.domain + ':' + port + namespace);
 
-
     function is_touch_enabled() {
         return ( 'ontouchstart' in window ) ||
             ( navigator.maxTouchPoints > 0 ) ||
@@ -72,7 +71,7 @@ $(document).ready(function() {
     var servo_command = 0, servo_command_timeout=0;
     var gains = [];
     var conf_names = [];
-    var profile="0", profiles = [profile];
+    var profile="default", profiles = [profile];
     var touch = is_touch_enabled();
     var register = true;
 
@@ -97,7 +96,6 @@ $(document).ready(function() {
                         cur = Number($('#' + event.data.iname + 'label').text())
                         pypilot_set(event.data.name, cur + event.data.step);
                     }};
-
                 }
                 button('1', '<<', -10);
                 button('2', '<', -1);
@@ -281,6 +279,8 @@ $(document).ready(function() {
 
         pypilot_watch('nmea.client');
 
+        pypilot_watch('imu.error');
+        pypilot_watch('imu.warning');
         pypilot_watch('servo.controller');
         pypilot_watch('servo.flags');
 
@@ -378,10 +378,6 @@ $(document).ready(function() {
 
         if('ap.heading' in data) {
             heading = data['ap.heading'];
-            if(heading.toString()=="false")
-                $('#aperrors0').text(_('compass or gyro failure!'));
-            else
-                $('#aperrors0').text('');
             $('#heading').text(heading_str(heading));
         }
 
@@ -555,6 +551,12 @@ $(document).ready(function() {
             value = data['ap.version'];
             $('#version').text(value);
         }
+
+        if('imu.error' in data)
+            $('#aperrors0').text(data['imu.error']);
+        
+        if('imu.warning' in data)
+            $('#imu_warning').text(data['imu.warning']);
 
         if('servo.controller' in data) {
             value = data['servo.controller'];
@@ -763,6 +765,15 @@ $(document).ready(function() {
     // Bind setTheme action when the user change the theme via the radio buttons
     $('.theme_option').on('click', function(){ setTheme() })
 
+
+    for (let l of languages)
+        $('#language').append('<option value="' + l + '">' + l + '</option>');
+    $('#language').val(language);
+
+    $('#language').change(function(event) {
+        socket.emit('language', $('#language').val());
+    });
+    
     $(window).resize(window_resize);
     window_resize();
 });

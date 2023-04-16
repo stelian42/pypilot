@@ -21,6 +21,8 @@
               return translations[msg];
           return msg;
       }
+      var language = '{{language}}';
+      var languages = {{languages}};
     </script>
 </head>
 <body>
@@ -130,11 +132,15 @@
 
     <div id="Configuration" class="w3-container tab" style="min-width: 560px;">
       <div id='theme_selector' class="configuration_item">
-          <spawn calss="value_name">{{_('Display')}}:</spawn>
+          <span class="value_name">{{_('Display')}}:</span>
           <label for="theme_clear" class="theme_name">{{_('Clear')}}&nbsp;</label><input type="radio" name="theme" class="theme_option" id="theme_clear" value="clear">
           <label for="theme_dark"  class="theme_name">{{_('Dark')}}&nbsp;</label><input type="radio" name="theme" class="theme_option" id="theme_dark"  value="dark" >
-      </div>
+      </div>      
       <div id="configuration_container" ></div>
+      <div id='language_selector'>
+          <span ="value_name">{{_('Language')}}:</span>
+          <select id="language">'<option value="default">default</option></select>
+      </div>
       <p>
       {{_('NMEA Client host:port (leave blank for none) eg: 192.168.0.1:10110')}}
       <p><input type="text" id="nmea_client"></input>
@@ -169,7 +175,7 @@
     <div id="status_container" class="data_block" style="position:fixed;bottom:-10">
       <br>pypilot {{_('Server')}}: <b><span id="connection"></span></b>
       <br>Servo Flags: <b><span id="servoflags"></span></b>
-      <br>Autopilot {{_('Errors')}}: <b><span id="aperrors0"></span> <span id="aperrors1"></span></b>
+      <br>Autopilot {{_('Errors')}}: <b><span id="aperrors0"></span> <span id="aperrors1"></span> <span id="imu_warning"></span></b>
       <br>{{_('Web Server Latency')}}: <b><span id="ping-pong"></span> ms</b>
     </div>
 </body>
