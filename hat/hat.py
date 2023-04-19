@@ -402,8 +402,8 @@ class Hat(object):
             if name.startswith('pilot '):
                 self.actions.append(ActionPypilot(self, name, 'ap.pilot', name.replace('pilot ', '', 1)))
 
-        # execute an arbitrary command, eg: shutdown
-        self.actions.append(ActionCommand('shutdown', 'shutdown -h now'))
+        # execute an arbitrary command, eg: poweroff
+        self.actions.append(ActionCommand('poweroff', 'poweroff'))
                 
         # useful to unassign a key
         self.actions.append(ActionNone())
