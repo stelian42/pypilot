@@ -120,6 +120,7 @@ PWR+             VIN
 #define DISABLE_TEMP_SENSE    // if no temp sensors avoid errors
 //#define DISABLE_VOLTAGE_SENSE // if no voltage sense
 //#define DISABLE_RUDDER_SENSE  // if no rudder sense
+#define FULL_RUDDER_RANGE
 
 
 // run at 4mhz instead of 16mhz to save power
@@ -1378,10 +1379,14 @@ void loop()
                 flags |= MAX_RUDDER_FAULT;
             } else
                 flags &= ~MAX_RUDDER_FAULT;
+#ifndef FULL_RUDDER_RANGE
             if(v < 1024+1024 || v > 65472 - 1024)
                 rudder_sense = 0;
+#endif
         } else {
+#ifndef FULL_RUDDER_RANGE
             if(v > 1024+1536 && v < 65472 - 1536)
+#endif
                 rudder_sense = 1;
             flags &= ~(MIN_RUDDER_FAULT | MAX_RUDDER_FAULT);
         }
@@ -1420,10 +1425,15 @@ void loop()
         case 2: case 5: case 8: case 12: case 15: case 18: case 22: case 25: case 28: case 32: case 35: case 38: case 41:
             if(CountADC(RUDDER, 0) < 10 || (!rudder_sense && out_sync_pos > 3))
                 return;
+#ifndef FULL_RUDDER_RANGE
             if(rudder_sense == 0)
                 v = 65535; // indicate invalid rudder measurement
             else
+#endif
                 v = TakeRudder(0);
+#ifdef FULL_RUDDER_RANGE
+            if (v == 65535) v = 65534;
+#endif
             code = RUDDER_SENSE_CODE;
             break;
         case 3: case 13: case 23: case 33:
