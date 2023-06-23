@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gpio
 import lircd
 import lcd
+import arduino
 
 print('hat import done', time.monotonic())
 
@@ -203,6 +204,9 @@ class Web(Process):
             if 'host' in msg:
                 print('host changed, exiting', msg['host'])
                 exit(0) # respawn
+            elif 'adc_channels' in msg:
+                if self.hat.arduino:
+                    self.hat.arduino.send(('arduino.adc_channels', msg['adc_channels']))
 
 class Arduino(Process):
     def __init__(self, hat):
@@ -215,7 +219,6 @@ class Arduino(Process):
 
     def create(self):
         def process(pipe, config):
-            import arduino
             print('arduino process on', os.getpid())
             if os.system("renice -5 %d" % os.getpid()):
                 print('warning, failed to renice hat arduino process')
@@ -237,6 +240,14 @@ class Arduino(Process):
                 elif key == 'voltage': # statistics
                     self.hat.web.send({'voltage': '5v = %.3f, 3.3v = %.3f' % (code['vcc'], code['vin'])})
                     self.hat.lcd.send(msg)
+                elif key == 'analog':
+                    
+                elif key == 'version':
+                    if self.hat.config.get('version') != code:
+                        print('update version, restart may update firmware')
+                        self.hat.config['version'] = code;
+                        self.hat.write_config()
+                        exit(1)
                 else:
                     ret.append(msg)
         return ret
@@ -283,6 +294,7 @@ class Hat(object):
     def __init__(self):
         # default config
         self.config = {'host': 'localhost', 'actions': {},
+                       'arduino.adc_channels': 0,
                        'pi.ir': True, 'arduino.ir': False,
                        'arduino.nmea.in': False, 'arduino.nmea.out': False,
                        'arduino.nmea.baud': 4800,
@@ -304,7 +316,7 @@ class Hat(object):
         try:
             configfile = '/proc/device-tree/hat/custom_0'
             f = open(configfile)
-            hat_config = pyjson.loads(f.read())
+v            hat_config = pyjson.loads(f.read())
             f.close()
             print('loaded device tree hat config')
             if not 'hat' in self.config or hat_config != self.config['hat']:
@@ -321,9 +333,11 @@ class Hat(object):
                                   'lirc':'gpio4'}
             self.write_config()
 
+        # update firmware
+        arduino.update_firmware(config)
+
         self.servo_timeout = time.monotonic() + 1
         self.servo_command = 0
-        
         self.last_msg = {'ap.enabled': False,
                          'ap.heading_command': 0,
                          'ap.mode': '',
@@ -337,14 +351,11 @@ class Hat(object):
         host = self.config['host']
         print('host', host)
 
-        if 'arduino' in self.config['hat']:
-            import arduino
-            arduino.arduino(self.config).firmware()
-
-        self.poller = select.poll()
+        self.poller = select.poll()        
         self.gpio = gpio.gpio()
         self.lcd = LCD(self)
         time.sleep(1)
+
         self.client = pypilotClient(host)
         self.client.registered = False
         self.watchlist = ['ap.enabled', 'ap.heading_command', 'ap.mode']
@@ -353,7 +364,7 @@ class Hat(object):
 
         for name in self.watchlist:
             self.client.watch(name)
-
+            
         if 'arduino' in self.config['hat']:
             self.arduino = Arduino(self)
             self.poller.register(self.arduino.pipe, select.POLLIN)
@@ -363,9 +374,7 @@ class Hat(object):
         self.lcd.poll()
         self.lirc = lircd.lirc(self.config)
         self.lirc.registered = False
-        self.keytimes = {}
-        self.keytimeouts = {}
-
+        self.keytime = False
         self.keycounts = {}
 
         self.inputs = [self.gpio, self.arduino, self.lirc]
@@ -495,13 +504,6 @@ class Hat(object):
         self.config[name] = value
 
     def apply_code(self, key, count):
-        if key in self.keytimeouts:
-            timeoutcount = self.keytimeouts[key]
-            if count > timeoutcount:
-                return # ignore as we already timed out from this key
-            del self.keytimeouts[key]
-            if count == 0:
-                return # already applied count 0
         self.web.send({'key': key})
 
         actions = self.config['actions']
@@ -512,10 +514,11 @@ class Hat(object):
             if key in keys:
                 if not count:
                     self.web.send({'action': action.name})
-                    if key in self.keytimes:
-                        del self.keytimes[key]
+                    if not self.keytime:
+                        break # do not apply keyup if already applied
+                    self.keytime = False
                 else:
-                    self.keytimes[key] = time.monotonic(), count
+                    self.keytime = key, time.monotonic()
                 action.trigger(count)
                 return
 
@@ -566,9 +569,11 @@ class Hat(object):
                 for event in events:
                     key, count = event
                     self.keycounts[key] = count
-                    if not count:
-                        self.apply_code(*self.key())
-                        del self.keycounts[key]
+                    if not count: # if key is released
+                        if self.keytime:
+                            self.apply_code(self.keytime[0], 0)
+                            self.keytime = False
+                        self.keycounts = {}
 
             except Exception as e:
                 self.inputs.remove(i)
@@ -604,13 +609,14 @@ class Hat(object):
         for i in [self.lcd, self.web]:
             i.poll()
         t3 = time.monotonic()
-        for key, tc in self.keytimes.items():
-            t, c = tc
+        if self.keytime:
+            key, t = self.keytime
             dt = t3 - t
             if dt > .6:
                 print('keyup event lost, releasing key from timeout', key, t3, dt)
                 self.apply_code(key, 0)
-                self.keytimeouts[key] = c # don't apply this code if we eventually receive it
+                self.keytime = False
+                self.keycounts = {}
                 break
 
         # receive heading once per second if autopilot is not enabled
@@ -652,7 +658,7 @@ class Hat(object):
         #print('hattime', time.monotonic(), e)
         #print('hat times', t1-t0, t2-t1, t3-t2, t4-t3, period, dt)
 
-def main():
+def main():    
     hat = Hat()
     print('hat init complete', time.monotonic())
     while True:
