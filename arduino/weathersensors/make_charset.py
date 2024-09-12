@@ -16,7 +16,8 @@ from PIL import ImageChops
 
 
 def create_character(n, c, ifont):
-    size = ifont.getsize(c)
+    left, top, right, bottom = ifont.getbbox(c)
+    size = right - left, bottom - top
     image = Image.new('RGBA', size)
     draw = ImageDraw.Draw(image)
     draw.text((0, 0), c, font=ifont)
