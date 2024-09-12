@@ -1,4 +1,4 @@
-ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.18/
+ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.19/
 BOARD_TAG = pro
 BOARD_SUB = 8MHzatmega328
 
@@ -8,5 +8,5 @@ USER_LIB_PATH = $(realpath IRLib2)
 
 ISP_PROG = avrispmkii
 
-ARDMK_DIR = /home/stelian/Arduino/arduino-1.8.18/
+ARDMK_DIR = /home/stelian/Arduino/arduino-1.8.19/
 include Arduino-noserial.mk

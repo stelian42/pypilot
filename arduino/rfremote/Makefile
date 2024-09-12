@@ -1,4 +1,4 @@
-ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.18/
+ARDUINO_DIR = /home/stelian/Arduino/arduino-1.8.19/
 BOARD_TAG = nano
 BOARD_SUB = atmega328
 
